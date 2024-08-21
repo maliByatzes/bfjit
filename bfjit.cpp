@@ -163,7 +163,7 @@ int main(int argc, char **argv) {
     } break;
     case Token::JUMP_FORWARD: {
       if (memory.at(ip) == 0) {
-        ip = commands.at(idx).operand;
+        ip = commands.at(idx).operand + 1;
       } else {
         ip++;
       }
