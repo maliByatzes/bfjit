@@ -146,9 +146,10 @@ int main(int argc, char **argv) {
       idx++;
     } break;
     case Token::OUTPUT: {
-      while (cmd.operand > 0) {
+      std::size_t temp{cmd.operand};
+      while (temp > 0) {
         std::cout << static_cast<char>(memory.at(ip));
-        cmd.operand--;
+        temp--;
       }
       idx++;
     } break;
