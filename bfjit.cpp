@@ -47,22 +47,10 @@ std::string readFileContets(const char *file_path) {
   return file_contets;
 }
 
-std::size_t calculateAddress(const std::vector<Command> &commands) {
-  std::size_t counter{};
-  for (auto const &cmd : commands) {
-    if (cmd.token == Token::JUMP_FORWARD || cmd.token == Token::JUMP_BACKWARD) {
-      counter++;
-    } else {
-      counter += cmd.operand;
-    }
-  }
-  return counter;
-}
-
 std::vector<Command> convertToIR(const std::string &contents,
                                  const char *file_path) {
   std::vector<Command> commands{};
-  std::stack<std::pair<std::size_t, std::size_t>> addr_stack{};
+  std::stack<std::size_t> addr_stack{};
 
   for (std::size_t index = 0; index < contents.size() - 1; ++index) {
     char current_char{contents.at(index)};
@@ -82,11 +70,10 @@ std::vector<Command> convertToIR(const std::string &contents,
       commands.push_back(cmd);
     } break;
     case '[': {
-      std::size_t addr{calculateAddress(commands)};
+      std::size_t addr{commands.size()};
       Command cmd{.token = static_cast<Token>(current_char), .operand = 0};
       commands.push_back(cmd);
-      std::size_t cmd_index{commands.size() - 1};
-      addr_stack.push({cmd_index, addr + 2});
+      addr_stack.push(addr);
     } break;
     case ']': {
       if (addr_stack.size() == 0) {
@@ -95,16 +82,13 @@ std::vector<Command> convertToIR(const std::string &contents,
         return {};
       }
 
-      std::pair<std::size_t, std::size_t> addr{addr_stack.top()};
+      std::size_t addr{addr_stack.top()};
       addr_stack.pop();
-      Command cmd{.token = static_cast<Token>(current_char),
-                  .operand = addr.second};
+      Command cmd{.token = static_cast<Token>(current_char), .operand = addr};
       commands.push_back(cmd);
-      commands.at(addr.first).operand = calculateAddress(commands);
+      commands.at(addr).operand = commands.size();
     } break;
     default: {
-      std::cerr << "ERROR: Invalid character.\n";
-      return {};
     }
     }
   }
@@ -133,51 +117,59 @@ int main(int argc, char **argv) {
 
   std::vector<uint8_t> memory(MEM_SIZE, 0);
   std::size_t ip{0};
+  std::size_t idx{0};
 
-  for (std::size_t idx = 0; idx < commands.size(); ++idx) {
-    switch (commands.at(idx).token) {
+  while (idx < commands.size()) {
+    Command cmd{commands.at(idx)};
+    switch (cmd.token) {
     case Token::INC: {
-      memory.at(ip) += commands.at(idx).operand;
+      memory.at(ip) += cmd.operand;
+      idx++;
     } break;
     case Token::DEC: {
-      memory.at(ip) -= commands.at(idx).operand;
+      memory.at(ip) -= cmd.operand;
+      idx++;
     } break;
     case Token::LEFT: {
-      if (ip < 0) {
+      if (ip < cmd.operand) {
         std::cerr << "RUNTIME ERROR: Memory underflow.\n";
         return 1;
       }
-      ip--;
+      ip -= cmd.operand;
+      idx++;
     } break;
     case Token::RIGHT: {
-      if (ip > MEM_SIZE) {
+      if (ip >= memory.size()) {
         memory.resize(MEM_SIZE * 2);
       }
-      ip++;
+      ip += cmd.operand;
+      idx++;
     } break;
     case Token::OUTPUT: {
-      std::cout << static_cast<char>(memory.at(ip));
+      while (cmd.operand > 0) {
+        std::cout << static_cast<char>(memory.at(ip));
+        cmd.operand--;
+      }
+      idx++;
     } break;
     case Token::INPUT: {
       assert(0 && "TODO: INPUT is not implmented");
     } break;
     case Token::JUMP_FORWARD: {
       if (memory.at(ip) == 0) {
-        ip = commands.at(idx).operand + 1;
+        idx = cmd.operand;
       } else {
-        ip++;
+        idx++;
       }
     } break;
     case Token::JUMP_BACKWARD: {
       if (memory.at(ip) != 0) {
-        ip = commands.at(idx).operand;
+        idx = cmd.operand;
       } else {
-        ip++;
+        idx++;
       }
     } break;
     default: {
-      std::cerr << "ERROR: Invalid command.\n";
-      return 1;
     }
     }
   }
