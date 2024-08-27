@@ -2,12 +2,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
-#include <fstream>
 #include <iostream>
 #include <stack>
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "common.h"
 
 const int MEM_SIZE{30'000};
 
@@ -26,26 +26,6 @@ struct Command {
   Token token{};
   std::size_t operand;
 };
-
-std::string readFileContets(const char *file_path) {
-  std::string file_contets{};
-
-  std::ifstream file(file_path);
-
-  if (file.is_open()) {
-    std::string temp{};
-    while (file) {
-      std::getline(file, temp);
-      if (temp != "") {
-        file_contets += temp;
-      }
-    }
-  } else {
-    throw std::runtime_error("Could not open file");
-  }
-
-  return file_contets;
-}
 
 std::vector<Command> convertToIR(const std::string &contents,
                                  const char *file_path) {
@@ -105,15 +85,15 @@ int main(int argc, char **argv) {
 
   const char *file_path{argv[1]};
 
-  std::string file_contets{};
+  std::string file_contents{};
   try {
-    file_contets = readFileContets(file_path);
+    file_contents = readFileContets(file_path);
   } catch (const std::runtime_error &e) {
     std::cerr << e.what() << '\n';
     return 1;
   }
 
-  std::vector<Command> commands{convertToIR(file_contets, file_path)};
+  std::vector<Command> commands{convertToIR(file_contents, file_path)};
 
   std::vector<uint8_t> memory(MEM_SIZE, 0);
   std::size_t ip{0};
